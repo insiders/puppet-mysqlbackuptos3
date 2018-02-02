@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
-S3_BUCKET='insiders-mysqlbackups'
-S3_PREFIX='backups/<%= $facts[ec2_metadata][instance-id] %>'
-TARFILE=$(date '+%Y-%m-%d')
+TIMESTAMP=$(date '+%F@%R%z')
+S3_BUCKET="insiders-mysqlbackups"
+S3_PREFIX="backups/<%= $facts[ec2_metadata][instance-id] %>/$TIMESTAMP"
+
+# Create a temp dir
 TMP_BACKUP_PATH=$(mktemp -d /tmp/mysqlbackup.XXXXXXXXX)
-
-# Dump all databases in the temp dir in gzip-compressed format
+# Dump all databases into the temp dir in gzip-compressed format
 mysql -N -e 'show databases' | while read dbname; do mysqldump --complete-insert --routines --triggers --single-transaction "$dbname" | gzip > $TMP_BACKUP_PATH/"$dbname".sql.gz; done
-# Tar the resulting dir and pipe it to S3
-aws s3 cp $TMP_BACKUP_PATH/* s3://$S3_BUCKET/$S3_PREFIX/
-
+# Copy the resulting dir to the S3 backup bucket, prefixed with instance-id and timestamp. 
+aws s3 cp --quiet --recursive $TMP_BACKUP_PATH s3://$S3_BUCKET/$S3_PREFIX/
 # Remove the temp directory
 rm -rf $TMP_BACKUP_PATH
