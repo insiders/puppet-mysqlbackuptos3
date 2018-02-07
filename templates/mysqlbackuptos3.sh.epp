@@ -7,7 +7,7 @@ S3_PREFIX="backups/<%= $facts[ec2_metadata][instance-id] %>/$TIMESTAMP"
 # Create a temp dir
 TMP_BACKUP_PATH=$(/bin/mktemp -d /tmp/mysqlbackup.XXXXXXXXX)
 # Dump all databases into the temp dir in gzip-compressed format
-/usr/bin/mysql -N -e 'show databases' | while read dbname; do /usr/bin/mysqldump --complete-insert --routines --triggers --single-transaction "$dbname" | /bin/gzip > $TMP_BACKUP_PATH/"$dbname".sql.gz; done
+/usr/bin/mysql -N -e 'show databases' | while read dbname; do /usr/bin/mysqldump --complete-insert --routines --triggers --single-transaction --skip-events --ignore-table=mysql.event "$dbname" | /bin/gzip > $TMP_BACKUP_PATH/"$dbname".sql.gz; done
 # Copy the resulting dir to the S3 backup bucket, prefixed with instance-id and timestamp. 
 /usr/local/bin/aws s3 cp --quiet --recursive $TMP_BACKUP_PATH s3://$S3_BUCKET/$S3_PREFIX/
 # Remove the temp directory
